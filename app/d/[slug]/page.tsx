@@ -25,6 +25,8 @@ import { InterestBox } from "@/components/interest-box";
 import { UnlockedAddress } from "@/components/unlocked-address";
 import { Watermark } from "@/components/watermark";
 
+export const dynamic = "force-dynamic";
+
 export async function generateMetadata({
   params,
 }: {

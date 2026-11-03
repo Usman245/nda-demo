@@ -13,11 +13,22 @@ export type Db = PgDatabase<PgQueryResultHKT, typeof schema>;
 const globalForDb = globalThis as unknown as { __dbPromise?: Promise<Db> };
 
 async function init(): Promise<Db> {
-  const url = process.env.DATABASE_URL;
+  const rawUrl =
+    process.env.DATABASE_URL ||
+    process.env.DATABASE_URL_UNPOOLED ||
+    process.env.POSTGRES_URL;
+  const url = rawUrl?.trim().replace(/^["']|["']$/g, "");
+
   if (url) {
     const { neon } = await import("@neondatabase/serverless");
     const { drizzle } = await import("drizzle-orm/neon-http");
     return drizzle(neon(url), { schema }) as unknown as Db;
+  }
+
+  if (process.env.NODE_ENV === "production" || process.env.VERCEL) {
+    throw new Error(
+      "Missing DATABASE_URL on Vercel. Please add DATABASE_URL in your Vercel Project Settings > Environment Variables, then redeploy."
+    );
   }
 
   const { PGlite } = await import("@electric-sql/pglite");
