@@ -1,26 +1,219 @@
 @import "tailwindcss";
+@import "leaflet/dist/leaflet.css";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #eaf0f7;
+  --foreground: #0f172a;
+  /* Per-tenant theme; overridden inline on the deal page from the org row. */
+  --brand: #0f766e;
+  --accent: #f59e0b;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --color-brand: var(--brand);
+  --color-accent: var(--accent);
+  --font-sans: var(--font-sans-custom), system-ui, sans-serif;
+  --font-display: var(--font-display-custom), var(--font-sans-custom), system-ui, sans-serif;
+  --font-mono: var(--font-mono-custom), ui-monospace, monospace;
+  --font-script: var(--font-script);
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans-custom), system-ui, sans-serif;
+  font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+}
+
+h1,
+h2,
+h3,
+.font-display {
+  font-family: var(--font-display-custom), var(--font-sans-custom), system-ui, sans-serif;
+  letter-spacing: -0.025em;
+}
+
+.tabular-nums {
+  font-family: var(--font-display-custom), var(--font-sans-custom), system-ui, sans-serif;
+  font-variant-numeric: tabular-nums;
+}
+
+html {
+  overflow-x: hidden;
+}
+
+/* ---------- Glassmorphism system ---------- */
+
+/* Light frosted panel */
+.glass {
+  background: linear-gradient(135deg, rgb(255 255 255 / 0.66), rgb(255 255 255 / 0.36));
+  -webkit-backdrop-filter: blur(20px) saturate(170%);
+  backdrop-filter: blur(20px) saturate(170%);
+  border: 1px solid rgb(255 255 255 / 0.65);
+  box-shadow:
+    0 10px 40px -12px rgb(15 23 42 / 0.18),
+    inset 0 1px 0 rgb(255 255 255 / 0.8),
+    inset 0 -1px 0 rgb(255 255 255 / 0.25);
+}
+
+/* More opaque, for dense content (tables, modals) */
+.glass-strong {
+  background: linear-gradient(135deg, rgb(255 255 255 / 0.86), rgb(255 255 255 / 0.66));
+  -webkit-backdrop-filter: blur(28px) saturate(180%);
+  backdrop-filter: blur(28px) saturate(180%);
+  border: 1px solid rgb(255 255 255 / 0.75);
+  box-shadow:
+    0 24px 60px -16px rgb(15 23 42 / 0.3),
+    inset 0 1px 0 rgb(255 255 255 / 0.9);
+}
+
+/* Dark frosted panel, for overlays on photos */
+.glass-dark {
+  background: linear-gradient(135deg, rgb(15 23 42 / 0.55), rgb(15 23 42 / 0.3));
+  -webkit-backdrop-filter: blur(16px) saturate(150%);
+  backdrop-filter: blur(16px) saturate(150%);
+  border: 1px solid rgb(255 255 255 / 0.22);
+  box-shadow:
+    0 12px 40px -10px rgb(0 0 0 / 0.5),
+    inset 0 1px 0 rgb(255 255 255 / 0.25);
+  color: #fff;
+}
+
+/* Tinted by the tenant's brand colour */
+.glass-brand {
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--brand) 88%, white 12%),
+    color-mix(in srgb, var(--brand) 72%, black 28%)
+  );
+  border: 1px solid rgb(255 255 255 / 0.3);
+  box-shadow:
+    0 14px 40px -10px color-mix(in srgb, var(--brand) 70%, transparent),
+    inset 0 1px 0 rgb(255 255 255 / 0.35);
+  color: #fff;
+}
+
+/* Frosted inputs */
+.glass-input {
+  background: rgb(255 255 255 / 0.55);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgb(255 255 255 / 0.8);
+  box-shadow: inset 0 1px 2px rgb(15 23 42 / 0.06);
+  transition: box-shadow 0.15s, border-color 0.15s, background 0.15s;
+}
+.glass-input:focus {
+  outline: none;
+  background: rgb(255 255 255 / 0.85);
+  border-color: var(--brand);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--brand) 20%, transparent);
+}
+
+/* Primary action: brand gradient with glow */
+.btn-brand {
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--brand) 85%, white 15%),
+    color-mix(in srgb, var(--brand) 78%, black 22%)
+  );
+  color: #fff;
+  border: 1px solid rgb(255 255 255 / 0.35);
+  box-shadow:
+    0 10px 28px -8px color-mix(in srgb, var(--brand) 75%, transparent),
+    inset 0 1px 0 rgb(255 255 255 / 0.4);
+  transition: transform 0.15s, box-shadow 0.15s, filter 0.15s;
+}
+.btn-brand:hover:not(:disabled) {
+  transform: translateY(-1px);
+  filter: brightness(1.08);
+}
+.btn-brand:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.btn-accent {
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--accent) 90%, white 10%),
+    color-mix(in srgb, var(--accent) 85%, black 15%)
+  );
+  color: #1c1917;
+  border: 1px solid rgb(255 255 255 / 0.45);
+  box-shadow:
+    0 10px 28px -8px color-mix(in srgb, var(--accent) 75%, transparent),
+    inset 0 1px 0 rgb(255 255 255 / 0.5);
+  transition: transform 0.15s, filter 0.15s;
+}
+.btn-accent:hover {
+  transform: translateY(-1px);
+  filter: brightness(1.05);
+}
+
+.btn-glass {
+  background: rgb(255 255 255 / 0.55);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgb(255 255 255 / 0.8);
+  box-shadow: 0 4px 14px -6px rgb(15 23 42 / 0.2), inset 0 1px 0 rgb(255 255 255 / 0.8);
+  transition: background 0.15s, transform 0.15s;
+}
+.btn-glass:hover {
+  background: rgb(255 255 255 / 0.85);
+  transform: translateY(-1px);
+}
+
+.text-gradient {
+  background: linear-gradient(135deg, var(--brand), color-mix(in srgb, var(--brand) 45%, var(--accent)));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* Frosted lock shimmer for the hidden address */
+@keyframes shimmer {
+  from {
+    background-position: -200% 0;
+  }
+  to {
+    background-position: 200% 0;
+  }
+}
+.shimmer {
+  background-image: linear-gradient(
+    100deg,
+    transparent 30%,
+    rgb(255 255 255 / 0.7) 50%,
+    transparent 70%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 3.2s linear infinite;
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.rise {
+  animation: rise 0.6s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .shimmer,
+  .rise {
+    animation: none;
+  }
+}
+
+/* Leaflet needs a stacking context below our modal/sticky CTA */
+.leaflet-container {
+  z-index: 0;
+  font-family: inherit;
 }
