@@ -6,6 +6,33 @@ import * as schema from "@/db/schema";
 export type Db = PgDatabase<PgQueryResultHKT, typeof schema>;
 
 /**
+ * Robust fetch wrapper for Neon HTTP queries with automatic retry and timeout
+ * to handle international network jitter or occasional connect timeouts gracefully.
+ */
+async function fetchWithRetry(url: string | URL | Request, init?: RequestInit): Promise<Response> {
+  const maxAttempts = 3;
+  let lastError: unknown;
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 20000); // 20s per attempt
+      const res = await fetch(url, {
+        ...init,
+        signal: init?.signal ?? controller.signal,
+      });
+      clearTimeout(timeoutId);
+      return res;
+    } catch (err) {
+      lastError = err;
+      if (attempt < maxAttempts) {
+        await new Promise((r) => setTimeout(r, attempt * 300));
+      }
+    }
+  }
+  throw lastError;
+}
+
+/**
  * Production / Neon: set DATABASE_URL (run `npm run db:migrate && npm run db:seed` once).
  * Local dev with no DATABASE_URL: an embedded Postgres (PGlite) stored in .data/pglite is
  * created, migrated and seeded automatically on first use.
@@ -20,7 +47,8 @@ async function init(): Promise<Db> {
   const url = rawUrl?.trim().replace(/^["']|["']$/g, "");
 
   if (url) {
-    const { neon } = await import("@neondatabase/serverless");
+    const { neon, neonConfig } = await import("@neondatabase/serverless");
+    neonConfig.fetchFunction = fetchWithRetry;
     const { drizzle } = await import("drizzle-orm/neon-http");
     return drizzle(neon(url), { schema }) as unknown as Db;
   }

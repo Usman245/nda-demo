@@ -7,7 +7,15 @@ import { AutoRefresh } from "@/components/auto-refresh";
 export const dynamic = "force-dynamic";
 
 export default async function DashboardPage() {
-  const [deals, stats] = await Promise.all([listDeals(), statsByDeal()]);
+  let deals: Awaited<ReturnType<typeof listDeals>> = [];
+  let stats: Awaited<ReturnType<typeof statsByDeal>> = new Map();
+  try {
+    const res = await Promise.all([listDeals(), statsByDeal()]);
+    deals = res[0];
+    stats = res[1];
+  } catch (err) {
+    console.error("Failed to load dashboard deals/stats:", err);
+  }
 
   const totals = deals.reduce(
     (acc, d) => {

@@ -106,34 +106,34 @@ export async function getNdaSignature(id: string, dealId: string) {
 
 type NumericRow = {
   purchasePrice: number;
-  refurbCost: number;
-  otherCosts: number;
-  sourcingFee: number;
+  refurbCost?: number | null;
+  otherCosts?: number | null;
+  sourcingFee?: number | null;
   monthlyRent: number;
-  serviceChargeAnnual: number;
-  groundRentAnnual: number;
-  insuranceAnnual: number;
-  maintenancePct: string | number;
-  managementPct: string | number;
-  voidsWeeks: number;
-  ltvPct: string | number;
-  mortgageRatePct: string | number;
+  serviceChargeAnnual?: number | null;
+  groundRentAnnual?: number | null;
+  insuranceAnnual?: number | null;
+  maintenancePct?: string | number | null;
+  managementPct?: string | number | null;
+  voidsWeeks?: number | null;
+  ltvPct?: string | number | null;
+  mortgageRatePct?: string | number | null;
 };
 
 export function toInputs(d: NumericRow): DealInputs {
   return {
-    purchasePrice: d.purchasePrice,
-    refurbCost: d.refurbCost,
-    otherCosts: d.otherCosts,
-    sourcingFee: d.sourcingFee,
-    monthlyRent: d.monthlyRent,
-    serviceChargeAnnual: d.serviceChargeAnnual,
-    groundRentAnnual: d.groundRentAnnual,
-    insuranceAnnual: d.insuranceAnnual,
-    maintenancePct: Number(d.maintenancePct),
-    managementPct: Number(d.managementPct),
-    voidsWeeks: d.voidsWeeks,
-    ltvPct: Number(d.ltvPct),
-    mortgageRatePct: Number(d.mortgageRatePct),
+    purchasePrice: Number(d.purchasePrice) || 0,
+    refurbCost: Number(d.refurbCost) || 0,
+    otherCosts: Number(d.otherCosts) || 0,
+    sourcingFee: Number(d.sourcingFee) || 0,
+    monthlyRent: Number(d.monthlyRent) || 0,
+    serviceChargeAnnual: Number(d.serviceChargeAnnual) || 0,
+    groundRentAnnual: Number(d.groundRentAnnual) || 0,
+    insuranceAnnual: Number(d.insuranceAnnual) || 0,
+    maintenancePct: Number(d.maintenancePct) || 0,
+    managementPct: Number(d.managementPct) || 0,
+    voidsWeeks: Number(d.voidsWeeks) || 0,
+    ltvPct: Number(d.ltvPct) || 0,
+    mortgageRatePct: Number(d.mortgageRatePct) || 0,
   };
 }

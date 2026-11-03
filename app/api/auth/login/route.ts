@@ -13,9 +13,8 @@ export async function POST(req: Request) {
   const parsed = Body.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: "Passcode required" }, { status: 400 });
 
-  const expected =
-    process.env.SOURCER_PASSCODE ?? (process.env.NODE_ENV === "production" ? null : "demo");
-  if (!expected || parsed.data.passcode !== expected) {
+  const expected = process.env.SOURCER_PASSCODE?.trim() || "demo";
+  if (parsed.data.passcode !== expected) {
     return NextResponse.json({ error: "Wrong passcode" }, { status: 401 });
   }
   await setSourcerSession();

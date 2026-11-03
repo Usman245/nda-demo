@@ -15,7 +15,6 @@ import {
 } from "@/lib/deals";
 import { calculate } from "@/lib/yield";
 import { dateTime, money, pct1 } from "@/lib/format";
-import { outcodeCentre, postcodePoint } from "@/lib/geo";
 import { Aurora } from "@/components/aurora";
 import { DealGallery } from "@/components/deal-gallery";
 import { DealMap } from "@/components/deal-map";
@@ -33,17 +32,30 @@ export async function generateMetadata({
   params: Promise<{ slug: string }>;
 }): Promise<Metadata> {
   const { slug } = await params;
-  const row = await getPublicDeal(slug);
-  return {
-    title: row ? `${row.deal.title} | ${row.org.name}` : "Deal not found",
-    robots: { index: false, follow: false },
-    referrer: "no-referrer",
-  };
+  try {
+    const row = await getPublicDeal(slug);
+    return {
+      title: row ? `${row.deal.title} | ${row.org.name}` : "Deal not found",
+      robots: { index: false, follow: false },
+      referrer: "no-referrer",
+    };
+  } catch {
+    return {
+      title: "Deal room",
+      robots: { index: false, follow: false },
+    };
+  }
 }
 
 export default async function DealPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  const row = await getPublicDeal(slug);
+  let row;
+  try {
+    row = await getPublicDeal(slug);
+  } catch (err) {
+    console.error("Failed to fetch public deal:", err);
+    notFound();
+  }
   if (!row) notFound();
   const { deal, org } = row;
 
@@ -70,8 +82,8 @@ export default async function DealPage({ params }: { params: Promise<{ slug: str
   let address: { lines: string[]; postcode: string } | null = null;
   let contact: Awaited<ReturnType<typeof getOrgContact>> | null = null;
   let signature: Awaited<ReturnType<typeof getNdaSignature>> | null = null;
-  let mapPoint = await outcodeCentre(deal.outcode);
   let mapMode: "area" | "exact" = "area";
+  let mapQuery = `${deal.outcode}, ${deal.city}, UK`;
 
   if (session) {
     const [a, c, s] = await Promise.all([
@@ -86,11 +98,8 @@ export default async function DealPage({ params }: { params: Promise<{ slug: str
         lines: [a.addressLine1, a.addressLine2, deal.city, a.postcode].filter(Boolean) as string[],
         postcode: a.postcode,
       };
-      const exact = await postcodePoint(a.postcode);
-      if (exact) {
-        mapPoint = exact;
-        mapMode = "exact";
-      }
+      mapMode = "exact";
+      mapQuery = `${address.lines.join(", ")}, UK`;
     }
   }
 
@@ -245,18 +254,12 @@ export default async function DealPage({ params }: { params: Promise<{ slug: str
           <section className="glass rounded-3xl p-4 sm:p-6 lg:col-start-1">
             <h2 className="mb-3 text-lg font-semibold">Location</h2>
             <div className="overflow-hidden rounded-2xl ring-1 ring-white/70">
-              {mapPoint ? (
-                <DealMap lat={mapPoint.lat} lng={mapPoint.lng} mode={mapMode} />
-              ) : (
-                <div className="flex h-48 items-center justify-center bg-white/40 text-slate-500">
-                  {deal.outcode}, {deal.city}
-                </div>
-              )}
+              <DealMap query={mapQuery} mode={mapMode} outcode={deal.outcode} />
             </div>
             <p className="mt-2 text-sm text-slate-500">
               {unlocked && mapMode === "exact"
-                ? "Exact location of the property."
-                : "Exact address released after NDA."}
+                ? "Exact location of the property on Google Maps."
+                : "Exact property address and pin released after NDA."}
             </p>
 
             <div className="mt-4">

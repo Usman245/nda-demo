@@ -1,5 +1,5 @@
+@import url("https://fonts.googleapis.com/css2?family=Caveat:wght@600;700&family=JetBrains+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap");
 @import "tailwindcss";
-@import "leaflet/dist/leaflet.css";
 
 :root {
   --background: #eaf0f7;
@@ -7,6 +7,10 @@
   /* Per-tenant theme; overridden inline on the deal page from the org row. */
   --brand: #0f766e;
   --accent: #f59e0b;
+  --font-sans-custom: "Plus Jakarta Sans", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-display-custom: "Space Grotesk", "Plus Jakarta Sans", system-ui, sans-serif;
+  --font-mono-custom: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  --font-script: "Caveat", "Brush Script MT", cursive;
 }
 
 @theme inline {

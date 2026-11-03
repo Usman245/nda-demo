@@ -4,7 +4,7 @@ import { headers } from "next/headers";
 import QRCode from "qrcode";
 import { ArrowLeft, Check, ExternalLink } from "lucide-react";
 import { dateTime, pct1 } from "@/lib/format";
-import { getDealForSourcer, getLeads, statsByDeal } from "@/lib/stats";
+import { getDealForSourcer, getLeads, statsByDeal, type DealStats } from "@/lib/stats";
 import { toInputs } from "@/lib/deals";
 import { calculate } from "@/lib/yield";
 import { AutoRefresh } from "@/components/auto-refresh";
@@ -21,10 +21,16 @@ const TABS = [
 async function baseUrl() {
   const env = process.env.NEXT_PUBLIC_APP_URL;
   if (env) return env.replace(/\/$/, "");
-  const h = await headers();
-  const host = h.get("x-forwarded-host") ?? h.get("host") ?? "localhost:3000";
-  const proto = h.get("x-forwarded-proto") ?? (host.startsWith("localhost") ? "http" : "https");
-  return `${proto}://${host}`;
+  try {
+    const h = await headers();
+    const host = h.get("x-forwarded-host") ?? h.get("host") ?? "localhost:3000";
+    const proto =
+      h.get("x-forwarded-proto") ??
+      (host.includes("localhost") || host.includes("127.0.0.1") ? "http" : "https");
+    return `${proto}://${host}`;
+  } catch {
+    return "http://localhost:3000";
+  }
 }
 
 export default async function DealAdminPage({
@@ -36,13 +42,27 @@ export default async function DealAdminPage({
 }) {
   const { id } = await params;
   const sp = await searchParams;
-  const d = await getDealForSourcer(id);
-  if (!d) notFound();
-  const tab = TABS.some(([k]) => k === sp.tab) ? sp.tab! : "share";
 
+  let d;
+  try {
+    d = await getDealForSourcer(id);
+  } catch (err) {
+    console.error("Failed to query deal:", err);
+    notFound();
+  }
+  if (!d) notFound();
+
+  const tab = TABS.some(([k]) => k === sp.tab) ? sp.tab! : "share";
   const url = `${await baseUrl()}/d/${d.slug}`;
   const calc = calculate(toInputs(d));
-  const stats = (await statsByDeal()).get(d.id) ?? { views: 0, ndaViews: 0, signatures: 0, interests: 0 };
+
+  let stats: DealStats = { views: 0, ndaViews: 0, signatures: 0, interests: 0 };
+  try {
+    const statsMap = await statsByDeal();
+    stats = statsMap.get(d.id) ?? stats;
+  } catch (err) {
+    console.error("Failed to fetch deal stats:", err);
+  }
 
   return (
     <div className="space-y-6">
@@ -100,7 +120,12 @@ export default async function DealAdminPage({
 }
 
 async function ShareTab({ url, title, gross }: { url: string; title: string; gross: string }) {
-  const qr = await QRCode.toDataURL(url, { margin: 1, width: 240 });
+  let qr = "";
+  try {
+    qr = await QRCode.toDataURL(url, { margin: 1, width: 240 });
+  } catch (err) {
+    console.error("Failed to generate QR code:", err);
+  }
   const whatsapp = `New deal: ${title} — ${gross} gross yield. View: ${url} (NDA required for address)`;
   return (
     <div className="grid gap-5 md:grid-cols-[1fr_auto]">
@@ -125,19 +150,30 @@ async function ShareTab({ url, title, gross }: { url: string; title: string; gro
           <CopyButton text={whatsapp} label="Copy WhatsApp message" />
         </div>
       </div>
-      <div className="glass rounded-3xl p-5 text-center">
-        <div className="overflow-hidden rounded-2xl bg-white p-2 shadow-sm">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={qr} alt="QR code for deal link" width={200} height={200} className="mx-auto" />
+      {qr && (
+        <div className="glass rounded-3xl p-5 text-center">
+          <div className="overflow-hidden rounded-2xl bg-white p-2 shadow-sm">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={qr} alt="QR code for deal link" width={200} height={200} className="mx-auto" />
+          </div>
+          <p className="mt-2.5 text-xs font-medium text-slate-500">Scan to open on mobile</p>
         </div>
-        <p className="mt-2.5 text-xs font-medium text-slate-500">Scan to open on mobile</p>
-      </div>
+      )}
     </div>
   );
 }
 
 async function LeadsTab({ dealId }: { dealId: string }) {
-  const { sigs, ints } = await getLeads(dealId);
+  let sigs: Awaited<ReturnType<typeof getLeads>>["sigs"] = [];
+  let ints: Awaited<ReturnType<typeof getLeads>>["ints"] = [];
+  try {
+    const leads = await getLeads(dealId);
+    sigs = leads.sigs;
+    ints = leads.ints;
+  } catch (err) {
+    console.error("Failed to load leads:", err);
+  }
+
   const interestedBy = new Map<string, typeof ints>();
   for (const i of ints) interestedBy.set(i.ndaId, [...(interestedBy.get(i.ndaId) ?? []), i]);
 
@@ -173,14 +209,14 @@ async function LeadsTab({ dealId }: { dealId: string }) {
                 </td>
                 <td className="px-3 py-4">{s.buyerPhone ?? "—"}</td>
                 <td className="px-3 py-4 text-slate-500">
-                  {dateTime(s.signedAt)}
+                  {s.signedAt ? dateTime(s.signedAt) : "—"}
                   <div className="text-xs text-slate-400">IP {s.ip ?? "n/a"}</div>
                 </td>
                 <td className="px-5 py-4">
                   {mine.length ? (
                     <div>
                       <span className="rounded-full bg-emerald-500/15 px-2.5 py-0.5 text-xs font-semibold text-emerald-800">
-                        Yes · {dateTime(mine[0].createdAt)}
+                        Yes · {mine[0]?.createdAt ? dateTime(mine[0].createdAt) : "Recently"}
                       </span>
                       {mine.map(
                         (m) =>
@@ -204,13 +240,15 @@ async function LeadsTab({ dealId }: { dealId: string }) {
   );
 }
 
-function StatsTab({ s }: { s: { views: number; ndaViews: number; signatures: number; interests: number } }) {
-  const conv = s.views ? (s.signatures / s.views) * 100 : 0;
+function StatsTab({ s }: { s: DealStats }) {
+  const views = s?.views ?? 0;
+  const signatures = s?.signatures ?? 0;
+  const conv = views > 0 ? (signatures / views) * 100 : 0;
   const cards = [
-    ["Page views", s.views],
-    ["NDA form opened", s.ndaViews],
-    ["NDAs signed", s.signatures],
-    ["Interest clicks", s.interests],
+    ["Page views", views],
+    ["NDA form opened", s?.ndaViews ?? 0],
+    ["NDAs signed", signatures],
+    ["Interest clicks", s?.interests ?? 0],
     ["View → NDA", pct1(conv)],
   ];
   return (

@@ -9,7 +9,7 @@ import { makeDealSlug } from "@/lib/slug";
 const int = z.coerce.number().int().min(0).max(100_000_000);
 const pct = z.coerce.number().min(0).max(100);
 
-export const DealBody = z.object({
+const DealBody = z.object({
   title: z.string().trim().min(3).max(120),
   strategy: z.enum(["BTL", "BRRR", "HMO", "Flip", "Development"]),
   description: z.string().trim().max(5000).optional().default(""),
