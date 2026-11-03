@@ -24,21 +24,39 @@ export async function POST(req: Request) {
 
   const name = `${randomUUID()}.${ext}`;
 
+  // 1. If Vercel Blob token is configured, use Vercel Blob (CDN storage)
   if (process.env.BLOB_READ_WRITE_TOKEN) {
-    const blob = await put(`deals/${name}`, file, { access: "public", addRandomSuffix: false });
-    return NextResponse.json({ url: blob.url });
+    try {
+      const blob = await put(`deals/${name}`, file, { access: "public", addRandomSuffix: false });
+      return NextResponse.json({ url: blob.url });
+    } catch (err) {
+      console.error("Vercel Blob upload failed, falling back:", err);
+    }
   }
 
-  if (process.env.VERCEL) {
-    return NextResponse.json(
-      { error: "Set BLOB_READ_WRITE_TOKEN to enable photo uploads" },
-      { status: 500 },
-    );
+  // 2. If running locally (not on Vercel), store to local disk
+  if (!process.env.VERCEL) {
+    try {
+      const dir = path.join(process.cwd(), ".data", "uploads");
+      await mkdir(dir, { recursive: true });
+      await writeFile(path.join(dir, name), Buffer.from(await file.arrayBuffer()));
+      return NextResponse.json({ url: `/uploads/${name}` });
+    } catch (err) {
+      console.error("Local file write failed:", err);
+    }
   }
 
-  // Local dev fallback: served by /uploads/[name]
-  const dir = path.join(process.cwd(), ".data", "uploads");
-  await mkdir(dir, { recursive: true });
-  await writeFile(path.join(dir, name), Buffer.from(await file.arrayBuffer()));
-  return NextResponse.json({ url: `/uploads/${name}` });
+  // 3. Fallback on Vercel when BLOB_READ_WRITE_TOKEN is not yet connected:
+  // Convert image to a base64 Data URL so photo uploads still work seamlessly without failing!
+  if (file.size <= 4 * 1024 * 1024) {
+    const bytes = await file.arrayBuffer();
+    const base64 = Buffer.from(bytes).toString("base64");
+    const dataUrl = `data:${file.type};base64,${base64}`;
+    return NextResponse.json({ url: dataUrl });
+  }
+
+  return NextResponse.json(
+    { error: "Connect Vercel Blob in your Vercel Dashboard > Storage tab to upload photos over 4MB." },
+    { status: 400 }
+  );
 }

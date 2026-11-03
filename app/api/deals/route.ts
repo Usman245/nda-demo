@@ -22,7 +22,7 @@ const DealBody = z.object({
   addressLine1: z.string().trim().min(2).max(120),
   addressLine2: z.string().trim().max(120).optional().default(""),
   postcode: z.string().trim().toUpperCase().min(5).max(9),
-  photos: z.array(z.string().max(500)).max(8).default([]),
+  photos: z.array(z.string().max(10_000_000)).max(8).default([]),
   purchasePrice: int.min(1),
   refurbCost: int,
   otherCosts: int,
